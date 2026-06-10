@@ -13,6 +13,7 @@
 # The gap between narrative scores and performance scores = Greenwashing Index.
 
 import re
+from src.matcher import match_terms
 from src.config import (
     NETZERO_KEYWORDS, FINANCED_EMISSIONS_KEYWORDS,
     FOSSIL_EXIT_KEYWORDS, FOSSIL_CONTINUATION_KEYWORDS,
@@ -56,14 +57,9 @@ def score_netzero_density(text: str, words_1000: float) -> dict:
     Note: this signal is NARRATIVE, so high score = high ambition (not bad alone).
     It becomes greenwashing when combined with low performance scores.
     """
-    hits = []
-    total_count = 0
-
-    for keyword in NETZERO_KEYWORDS:
-        count = text.count(keyword)
-        if count > 0:
-            total_count += count
-            hits.append(f"'{keyword}' appears {count}x")
+    matches = match_terms(text, NETZERO_KEYWORDS)
+    total_count = matches.total_asserted
+    hits = [f"'{t}' appears {c}x" for t, c in matches.top_terms(10)]
 
     density = total_count / words_1000
 
@@ -83,6 +79,7 @@ def score_netzero_density(text: str, words_1000: float) -> dict:
     return {
         "score": round(score, 2),
         "total_count": total_count,
+        "negated_mentions": matches.total_negated,
         "density_per_1000_words": round(density, 2),
         "finding": finding,
         "evidence_summary": hits[:5],  # top 5 hits
@@ -107,11 +104,8 @@ def score_financed_emissions(text: str, words_1000: float) -> dict:
     - Some mentions, no data → score 5
     - Net-zero claims exist but zero financed emissions terms → score 9
     """
-    hits = {}
-    for keyword in FINANCED_EMISSIONS_KEYWORDS:
-        count = text.count(keyword)
-        if count > 0:
-            hits[keyword] = count
+    matches = match_terms(text, FINANCED_EMISSIONS_KEYWORDS)
+    hits = dict(matches.asserted)
 
     total_hits = sum(hits.values())
     unique_terms = len(hits)
@@ -167,17 +161,8 @@ def score_fossil_fuel(text: str) -> dict:
     - Continuation >> Exit → score 8 (greenwashing via loophole language)
     - No fossil fuel mention at all → score 7 (avoidance is also a signal)
     """
-    exit_hits = {}
-    for kw in FOSSIL_EXIT_KEYWORDS:
-        count = text.count(kw)
-        if count > 0:
-            exit_hits[kw] = count
-
-    continuation_hits = {}
-    for kw in FOSSIL_CONTINUATION_KEYWORDS:
-        count = text.count(kw)
-        if count > 0:
-            continuation_hits[kw] = count
+    exit_hits = dict(match_terms(text, FOSSIL_EXIT_KEYWORDS).asserted)
+    continuation_hits = dict(match_terms(text, FOSSIL_CONTINUATION_KEYWORDS).asserted)
 
     total_exit = sum(exit_hits.values())
     total_continuation = sum(continuation_hits.values())
@@ -302,14 +287,8 @@ def score_forward_backward(text: str, sentences: list) -> dict:
     - "We will commit to... we aim to... by 2030 we plan..."
     - With little evidence of what was actually achieved.
     """
-    forward_count = 0
-    backward_count = 0
-
-    for keyword in FORWARD_LOOKING_KEYWORDS:
-        forward_count += text.count(keyword)
-
-    for keyword in BACKWARD_LOOKING_KEYWORDS:
-        backward_count += text.count(keyword)
+    forward_count = match_terms(text, FORWARD_LOOKING_KEYWORDS).total_asserted
+    backward_count = match_terms(text, BACKWARD_LOOKING_KEYWORDS).total_asserted
 
     total = forward_count + backward_count
     forward_ratio = (forward_count / total) if total > 0 else 0.5
@@ -350,11 +329,8 @@ def score_taxonomy_disclosure(text: str, words_1000: float) -> dict:
     Claiming "green leadership" without disclosing these ratios is a
     clear accountability gap.
     """
-    hits = {}
-    for keyword in TAXONOMY_KEYWORDS:
-        count = text.count(keyword)
-        if count > 0:
-            hits[keyword] = count
+    matches = match_terms(text, TAXONOMY_KEYWORDS)
+    hits = dict(matches.asserted)
 
     total_hits = sum(hits.values())
     unique_terms = len(hits)

@@ -142,12 +142,13 @@ def score_section_vagueness(section: dict) -> dict:
     because a section titled "Environmental Performance" should have numbers.
     """
     from src.config import VAGUE_ESG_WORDS, SPECIFIC_ESG_WORDS
+    from src.matcher import match_terms
     text = section["full_text"]
     words = text.split()
     total_words = max(len(words), 1)
 
-    vague_hits = sum(text.count(term) for term in VAGUE_ESG_WORDS)
-    specific_hits = sum(text.count(term) for term in SPECIFIC_ESG_WORDS)
+    vague_hits = match_terms(text, VAGUE_ESG_WORDS).total_asserted
+    specific_hits = match_terms(text, SPECIFIC_ESG_WORDS).total_asserted
 
     # Normalized density per 1000 words
     vague_density = (vague_hits / total_words) * 1000

@@ -12,6 +12,7 @@
 # Threshold: above 0.65 = high boilerplate = greenwashing signal
 
 from collections import Counter
+from src.matcher import match_terms
 from src.config import VAGUE_ESG_WORDS, SPECIFIC_ESG_WORDS, BOILERPLATE_THRESHOLDS
 
 
@@ -30,23 +31,15 @@ def run_language_audit(full_text: str, word_list: list) -> dict:
       - interpretation: one-sentence finding
     """
 
-    # --- Count vague vocabulary ---
-    vague_counts = {}
-    for term in VAGUE_ESG_WORDS:
-        count = full_text.count(term.lower())
-        if count > 0:
-            vague_counts[term] = count
-
-    total_vague = sum(vague_counts.values())
+    # --- Count vague vocabulary (word-boundary, negation-aware) ---
+    vague_matches = match_terms(full_text, VAGUE_ESG_WORDS)
+    vague_counts = dict(vague_matches.asserted)
+    total_vague = vague_matches.total_asserted
 
     # --- Count specific vocabulary ---
-    specific_counts = {}
-    for term in SPECIFIC_ESG_WORDS:
-        count = full_text.count(term.lower())
-        if count > 0:
-            specific_counts[term] = count
-
-    total_specific = sum(specific_counts.values())
+    specific_matches = match_terms(full_text, SPECIFIC_ESG_WORDS)
+    specific_counts = dict(specific_matches.asserted)
+    total_specific = specific_matches.total_asserted
 
     # --- Calculate boilerplate ratio ---
     denominator = total_vague + total_specific
