@@ -65,7 +65,7 @@ def run_pipeline(countries: list) -> list:
 
             try:
                 # Extract
-                extracted  = extract_text_from_pdf(str(pdf_path))
+                extracted  = extract_text_from_pdf(str(pdf_path), pages=bank_meta.get("pages"))
                 sentences  = extract_sentences(extracted["full_text"])
                 word_list  = get_word_list(extracted["full_text"])
 

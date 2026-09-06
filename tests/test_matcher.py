@@ -108,3 +108,18 @@ def test_term_at_start_and_end_of_text():
     text = "net zero is the goal and the goal is net zero"
     res = match_terms(text, NETZERO_KEYWORDS)
     assert res.asserted.get("net zero") == 2
+
+
+# ---------------------------------------------------------------------------
+# 6. PAGE-RANGE SELECTION (extractor)
+# ---------------------------------------------------------------------------
+from src.extractor import _in_range
+
+def test_page_range_inclusive_bounds():
+    assert _in_range(95, (95, 410))
+    assert _in_range(410, (95, 410))
+    assert not _in_range(94, (95, 410))
+    assert not _in_range(411, (95, 410))
+
+def test_no_range_means_all_pages():
+    assert _in_range(1, None) and _in_range(999, None)

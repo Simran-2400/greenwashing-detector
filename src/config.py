@@ -276,12 +276,15 @@ SECTION_HEADER_PATTERNS = [
 # BANK METADATA (unchanged in v2)
 # -----------------------------------------------------------------------------
 BANKS = {
+    # "pages": (start, end) of the Consolidated Sustainability Statement inside
+    # the annual report (1-indexed, from the PDF's table of contents).
+    # None = analyze the whole PDF. Fill these from data/reports/italy/SOURCES.txt.
     "italy": [
-        {"name": "Intesa Sanpaolo",    "ticker": "ISP",  "filename": "intesa_sanpaolo_2024.pdf"},
-        {"name": "UniCredit",          "ticker": "UCG",  "filename": "unicredit_2024.pdf"},
-        {"name": "Banco BPM",          "ticker": "BAMI", "filename": "banco_bpm_2024.pdf"},
-        {"name": "BPER Banca",         "ticker": "BPE",  "filename": "bper_2024.pdf"},
-        {"name": "Monte dei Paschi",   "ticker": "BMPS", "filename": "mps_2024.pdf"},
+        {"name": "Intesa Sanpaolo",    "ticker": "ISP",  "filename": "intesa_sanpaolo_2024.pdf", "pages": None},
+        {"name": "UniCredit",          "ticker": "UCG",  "filename": "unicredit_2024.pdf",       "pages": None},
+        {"name": "Banco BPM",          "ticker": "BAMI", "filename": "banco_bpm_2024.pdf",       "pages": None},
+        {"name": "BPER Banca",         "ticker": "BPE",  "filename": "bper_2024.pdf",            "pages": None},
+        {"name": "Monte dei Paschi",   "ticker": "BMPS", "filename": "mps_2024.pdf",             "pages": None},
     ],
     "germany": [
         {"name": "Deutsche Bank",      "ticker": "DBK",  "filename": "deutsche_bank_2024.pdf"},

@@ -14,9 +14,13 @@ import re
 from pathlib import Path
 
 
-def extract_text_from_pdf(pdf_path: str) -> dict:
+def extract_text_from_pdf(pdf_path: str, pages: tuple = None) -> dict:
     """
     Extract clean text from a bank sustainability report PDF.
+
+    pages: optional (start, end) — 1-indexed, inclusive. Use it when the
+    sustainability statement is a chapter inside a large annual report,
+    so we only analyze those pages (e.g. pages=(95, 410)).
 
     Returns a dict with:
       - full_text: entire report as one string (for keyword counting)
@@ -35,16 +39,19 @@ def extract_text_from_pdf(pdf_path: str) -> dict:
         total_pages = len(pdf.pages)
 
         for i, page in enumerate(pdf.pages):
+            page_num = i + 1
+            if not _in_range(page_num, pages):
+                continue
             raw_text = page.extract_text()
             if not raw_text:
                 continue  # skip empty pages (images, charts)
 
-            cleaned = _clean_page_text(raw_text, i + 1)
+            cleaned = _clean_page_text(raw_text, page_num)
             if len(cleaned.strip()) < 50:
                 continue  # skip pages with almost no text (graphics pages)
 
             pages_data.append({
-                "page_num": i + 1,
+                "page_num": page_num,
                 "text": cleaned
             })
             full_text_parts.append(cleaned)
@@ -57,8 +64,17 @@ def extract_text_from_pdf(pdf_path: str) -> dict:
         "pages": pages_data,
         "word_count": word_count,
         "page_count": total_pages,
+        "pages_analyzed": pages or (1, total_pages),
         "source_path": str(pdf_path)
     }
+
+
+def _in_range(page_num: int, pages: tuple) -> bool:
+    """True if page_num falls inside the (start, end) range. No range = all pages."""
+    if pages is None:
+        return True
+    start, end = pages
+    return start <= page_num <= end
 
 
 def _clean_page_text(text: str, page_num: int) -> str:
