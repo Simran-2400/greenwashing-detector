@@ -121,7 +121,7 @@ def _print_report(bank_name, country, extracted, audit, sections,
         f"Greenwashing Index: [{style}]{index}/10[/{style}]\n"
         f"Narrative Score: {gap_calc['narrative_score']}/10  |  "
         f"Performance Score: {gap_calc['performance_score']}/10\n"
-        f"Gap interpretation: {gap_calc['gap_interpretation']}",
+        f"Profile: {gap_calc['profile']}",
         title="Overall Result",
         border_style="dim"
     ))

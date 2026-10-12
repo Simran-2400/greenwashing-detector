@@ -2,16 +2,18 @@
 # gap_calculator.py — Greenwashing Index
 # =============================================================================
 #
-# LOGIC: The greenwashing index is not just an average of 6 scores.
-# It specifically measures the GAP between:
-#   NARRATIVE SCORE  (what the bank SAYS  — signals 1, 4, 5)
-#   PERFORMANCE SCORE (what the bank SHOWS — signals 2, 3, 6)
+# Two scores, both on 0-10 where HIGH means MORE greenwashing risk:
+#   NARRATIVE SCORE   (talk: what the bank SAYS  — signals 1, 4, 5)
+#                     high = lots of ambitious, vague, future-heavy claims
+#   PERFORMANCE SCORE (walk: what the bank SHOWS — signals 2, 3, 6)
+#                     high = weak or missing hard disclosure
 #
-# A bank that scores high on narrative AND high on performance is greenwashing.
-# A bank that scores low on both is under-claiming.
-# A bank that scores high on performance but low on narrative is conservative.
-#
-# GREENWASHING INDEX = Narrative Score (amplified by Performance Gap)
+# Greenwashing is big talk COMBINED with weak walk, so the index uses the
+# geometric mean sqrt(narrative x performance). It is only high when BOTH
+# scores are high; a bank with big talk but strong disclosure stays moderate.
+# A small boilerplate penalty (max 1 point) is added on top.
+
+import math
 
 from src.config import GREENWASHING_THRESHOLDS
 
@@ -39,34 +41,32 @@ def calculate_greenwashing_index(signals: dict, boilerplate_ratio: float) -> dic
     narrative_score = sum(narrative_signals.values()) / len(narrative_signals)
     performance_score = sum(performance_signals.values()) / len(performance_signals)
 
-    # --- Boilerplate penalty ---
-    # A high boilerplate ratio adds up to 1.0 point to the final index
+    # --- Boilerplate penalty (adds up to 1 point) ---
     boilerplate_penalty = min(1.0, boilerplate_ratio * 1.5)
 
-    # --- Greenwashing Index ---
-    # Simple average of all 6 signals + boilerplate penalty
-    raw_index = (narrative_score + performance_score) / 2
-    greenwashing_index = min(10.0, raw_index + boilerplate_penalty)
-
-    # --- Verdict ---
+    # --- Greenwashing Index: high only when talk AND walk risk are both high ---
+    combined = math.sqrt(narrative_score * performance_score)
+    greenwashing_index = min(10.0, combined + boilerplate_penalty)
     verdict = _get_verdict(greenwashing_index)
 
-    # --- Gap analysis ---
-    gap = performance_score - narrative_score
-    if gap > 2:
-        gap_interpretation = "UNDER-REPORTER: Performance evidence exceeds narrative claims. Bank is conservative in its ESG communication."
-    elif gap < -2:
-        gap_interpretation = "GREENWASHING RISK: Narrative ambition significantly exceeds performance evidence. Classic talk-walk gap."
+    # --- Profile: which talk/walk quadrant the bank falls in (midpoint 5) ---
+    big_talk = narrative_score >= 5
+    weak_walk = performance_score >= 5
+    if big_talk and weak_walk:
+        profile = "GREENWASHING RISK: big talk, weak disclosure."
+    elif big_talk:
+        profile = "BACKED AMBITION: big talk, supported by disclosure."
+    elif weak_walk:
+        profile = "LOW TRANSPARENCY: modest talk, weak disclosure."
     else:
-        gap_interpretation = "ALIGNED: Narrative and performance scores are broadly consistent."
+        profile = "UNDER-CLAIMER: modest talk, strong disclosure."
 
     return {
         "greenwashing_index": round(greenwashing_index, 2),
         "verdict": verdict,
         "narrative_score": round(narrative_score, 2),
         "performance_score": round(performance_score, 2),
-        "gap": round(performance_score - narrative_score, 2),
-        "gap_interpretation": gap_interpretation,
+        "profile": profile,
         "boilerplate_penalty": round(boilerplate_penalty, 2),
         "signal_breakdown": {
             "narrative": {k: round(v, 2) for k, v in narrative_signals.items()},
@@ -101,7 +101,7 @@ def build_summary_dataframe(all_results: list) -> object:
             "Greenwashing Index": r["gap_calc"]["greenwashing_index"],
             "Narrative Score": r["gap_calc"]["narrative_score"],
             "Performance Score": r["gap_calc"]["performance_score"],
-            "Gap (Perf - Narr)": r["gap_calc"]["gap"],
+            "Profile": r["gap_calc"]["profile"],
             "Verdict": r["gap_calc"]["verdict"],
             "Boilerplate %": r["language_audit"]["boilerplate_ratio_pct"],
             # Individual signals

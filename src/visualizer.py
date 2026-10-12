@@ -97,10 +97,8 @@ def chart1_greenwashing_ranking(df: pd.DataFrame) -> str:
 def chart2_narrative_vs_performance(df: pd.DataFrame) -> str:
     """
     Scatter plot: Narrative Score (x) vs Performance Score (y).
-    Each point = one bank, colored by country.
-    The diagonal line = perfect alignment.
-    Points ABOVE the diagonal = under-reporters.
-    Points BELOW the diagonal = greenwashers (high narrative, low performance).
+    Each point = one bank, colored by country. Both axes: high = more risk.
+    Top-right quadrant (big talk, weak disclosure) = greenwashing risk.
     """
     fig, ax = plt.subplots(figsize=(8, 8))
 
@@ -114,14 +112,17 @@ def chart2_narrative_vs_performance(df: pd.DataFrame) -> str:
                         (row["Narrative Score"], row["Performance Score"]),
                         textcoords="offset points", xytext=(6, 4), fontsize=7)
 
-    # Diagonal = perfect alignment
-    ax.plot([0, 10], [0, 10], "k--", linewidth=0.8, alpha=0.4, label="Perfect alignment")
+    # Quadrant lines at the midpoint, matching the profile in gap_calculator.py
+    ax.axvline(5, color="k", linestyle="--", linewidth=0.8, alpha=0.4)
+    ax.axhline(5, color="k", linestyle="--", linewidth=0.8, alpha=0.4)
 
-    # Quadrant labels
-    ax.text(7.5, 2.0, "GREENWASHING\nZONE", fontsize=8, color="#E24B4A",
-            alpha=0.7, ha="center", style="italic")
-    ax.text(2.0, 7.5, "UNDER-\nREPORTING", fontsize=8, color="#27500A",
-            alpha=0.7, ha="center", style="italic")
+    quadrants = [(7.5, 7.5, "GREENWASHING\nRISK", "#E24B4A"),
+                 (7.5, 2.5, "BACKED\nAMBITION", "#27500A"),
+                 (2.5, 7.5, "LOW\nTRANSPARENCY", "#8A6D3B"),
+                 (2.5, 2.5, "UNDER-\nCLAIMER", "#27500A")]
+    for x, y, label, color in quadrants:
+        ax.text(x, y, label, fontsize=8, color=color,
+                alpha=0.7, ha="center", style="italic")
 
     ax.set_xlabel("Narrative Score (higher = more ambitious claims)", fontsize=10)
     ax.set_ylabel("Performance Score (higher = less disclosure)", fontsize=10)
