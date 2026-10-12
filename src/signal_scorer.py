@@ -241,15 +241,20 @@ def score_target_quantification(text: str, sentences: list) -> dict:
             specific_count += 1
             if len(specific_examples) < 3:
                 specific_examples.append(sent[:120])
-        elif is_vague or not is_specific:
+        elif is_vague:
             vague_count += 1
             if len(vague_examples) < 3:
                 vague_examples.append(sent[:120])
+        # Sentences that are neither specific nor vague (plain description)
+        # are left out of the ratio on purpose.
 
     total = specific_count + vague_count
     specificity_ratio = (specific_count / total) if total > 0 else 0
 
-    if specificity_ratio > 0.6:
+    if total == 0:
+        score = 5.0
+        finding = "No clearly specific or clearly vague climate claims found."
+    elif specificity_ratio > 0.6:
         score = 2.0
         finding = f"Strong target quantification: {specific_count}/{total} climate claims include specific numbers, years, or metrics."
     elif specificity_ratio > 0.35:
