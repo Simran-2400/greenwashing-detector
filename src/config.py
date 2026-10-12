@@ -1,7 +1,6 @@
 # =============================================================================
 # config.py — Theory-Grounded Keyword Dictionaries & Bank Metadata
 # Bank Greenwashing Detection Pipeline
-# Supervisors: Prof. Andrea Cilloni (Accounting), Prof. Marco Riani (Statistics)
 # =============================================================================
 #
 # DESIGN LOGIC (v2 — theory-grounded):
