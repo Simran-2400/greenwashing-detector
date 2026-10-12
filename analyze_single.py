@@ -41,7 +41,7 @@ VERDICT_STYLES = {
 SCORE_STYLE = lambda s: "green" if s <= 3 else "yellow" if s <= 5.5 else "red"
 
 
-def analyze_bank(pdf_path: str, bank_name: str, country: str) -> dict:
+def analyze_bank(pdf_path: str, bank_name: str, country: str, year: int) -> dict:
     """Full pipeline: PDF → scores → report."""
 
     console.print(f"\n[bold]Analyzing:[/bold] {bank_name} ({country.title()})")
@@ -75,7 +75,8 @@ def analyze_bank(pdf_path: str, bank_name: str, country: str) -> dict:
         signals = score_all_signals(
             extracted["full_text"],
             extracted["word_count"],
-            sentences
+            sentences,
+            year
         )
 
     console.print(f"  [green]✓[/green] Scored all 6 signals")
@@ -226,6 +227,7 @@ def main():
     parser.add_argument("pdf_path", help="Path to the PDF sustainability report")
     parser.add_argument("--bank", default="Unknown Bank", help="Bank name")
     parser.add_argument("--country", default="unknown", help="Country (italy/germany/france)")
+    parser.add_argument("--year", type=int, default=2025, help="Fiscal year of the report (default 2025)")
     parser.add_argument("--save-json", action="store_true", help="Save results to JSON file")
 
     args = parser.parse_args()
@@ -234,7 +236,7 @@ def main():
         console.print(f"[red]Error: File not found: {args.pdf_path}[/red]")
         sys.exit(1)
 
-    result = analyze_bank(args.pdf_path, args.bank, args.country)
+    result = analyze_bank(args.pdf_path, args.bank, args.country, args.year)
 
     if args.save_json:
         out_path = f"data/output/scores/{args.bank.lower().replace(' ', '_')}_result.json"

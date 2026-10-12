@@ -2,13 +2,13 @@
 # main.py — Full Pipeline: All Banks → All Charts
 # =============================================================================
 # USAGE:
-#   python main.py --country italy          # run Italy only (start here)
-#   python main.py --country all            # run all 15 banks
-#   python main.py --country italy germany  # run two countries
+#   python main.py --country italy              # Italy, FY2025 (default year)
+#   python main.py --country italy --year 2024  # Italy, FY2024 robustness check
+#   python main.py --country italy germany      # two countries
 #
 # BEFORE RUNNING:
 #   1. Download PDF reports from the links provided
-#   2. Save them in data/reports/<country>/ with the filenames in config.py
+#   2. Save them as data/reports/<country>_<year>/<file>_<year>.pdf (see config.py)
 #   3. pip install -r requirements.txt
 #   4. python main.py --country italy
 
@@ -36,7 +36,12 @@ REPORTS_DIR = Path("data/reports")
 OUTPUT_DIR  = Path("data/output")
 
 
-def run_pipeline(countries: list) -> list:
+def pdf_path_for(country: str, bank_meta: dict, year: int) -> Path:
+    """data/reports/italy_2025/bper_2025.pdf"""
+    return REPORTS_DIR / f"{country}_{year}" / f"{bank_meta['file']}_{year}.pdf"
+
+
+def run_pipeline(countries: list, year: int) -> list:
     """
     Run the full pipeline for the specified countries.
     Returns list of result dicts (one per bank).
@@ -52,12 +57,12 @@ def run_pipeline(countries: list) -> list:
         banks = BANKS[country]
 
         for bank_meta in banks:
-            pdf_path = REPORTS_DIR / country / bank_meta["filename"]
+            pdf_path = pdf_path_for(country, bank_meta, year)
 
             if not pdf_path.exists():
                 console.print(
                     f"  [yellow]⚠ Missing:[/yellow] {pdf_path}\n"
-                    f"  → Download from bank's sustainability page and save as: {bank_meta['filename']}"
+                    f"  → Download the FY{year} report and save it as: {pdf_path}"
                 )
                 continue
 
@@ -65,7 +70,8 @@ def run_pipeline(countries: list) -> list:
 
             try:
                 # Extract
-                extracted  = extract_text_from_pdf(str(pdf_path), pages=bank_meta.get("pages"))
+                pages      = bank_meta.get("pages", {}).get(year)
+                extracted  = extract_text_from_pdf(str(pdf_path), pages=pages)
                 sentences  = extract_sentences(extracted["full_text"])
                 word_list  = get_word_list(extracted["full_text"])
 
@@ -76,7 +82,7 @@ def run_pipeline(countries: list) -> list:
                 signals        = score_all_signals(
                                      extracted["full_text"],
                                      extracted["word_count"],
-                                     sentences)
+                                     sentences, year)
                 gap_calc       = calculate_greenwashing_index(
                                      signals, audit["boilerplate_ratio"])
 
@@ -110,7 +116,7 @@ def run_pipeline(countries: list) -> list:
     return all_results
 
 
-def print_summary_table(all_results: list):
+def print_summary_table(all_results: list, year: int):
     """Print a ranked summary table of all analyzed banks."""
     console.print("\n")
     console.rule("[bold]RESULTS SUMMARY[/bold]")
@@ -120,7 +126,7 @@ def print_summary_table(all_results: list):
                             reverse=True)
 
     t = Table(box=box.ROUNDED, show_header=True, header_style="bold",
-              title="Bank Greenwashing Analysis — FY2024")
+              title=f"Bank Greenwashing Analysis — FY{year}")
     t.add_column("Rank", justify="center", width=4)
     t.add_column("Bank",    min_width=20)
     t.add_column("Country", width=8)
@@ -151,9 +157,9 @@ def print_summary_table(all_results: list):
     console.print(t)
 
 
-def save_excel_output(df: pd.DataFrame):
+def save_excel_output(df: pd.DataFrame, year: int):
     """Save the full results DataFrame to Excel for the written report."""
-    out_path = OUTPUT_DIR / "scores" / "greenwashing_results.xlsx"
+    out_path = OUTPUT_DIR / "scores" / f"greenwashing_results_{year}.xlsx"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_excel(str(out_path), index=False)
     console.print(f"  [green]✓[/green] Excel output saved: {out_path}")
@@ -168,22 +174,27 @@ def main():
         help="Countries to analyze: italy germany france all"
     )
     parser.add_argument(
+        "--year", type=int, default=2025,
+        help="Fiscal year of the reports (default 2025; 2024 = robustness check)"
+    )
+    parser.add_argument(
         "--no-charts", action="store_true",
         help="Skip chart generation"
     )
 
     args = parser.parse_args()
     countries = args.country
+    year = args.year
 
     if "all" in countries:
         countries = ["italy", "germany", "france"]
 
     console.print("\n[bold]Bank Greenwashing Detection Pipeline[/bold]")
-    console.print(f"Countries: {', '.join(c.title() for c in countries)}")
+    console.print(f"Countries: {', '.join(c.title() for c in countries)}  |  FY{year}")
     console.print(f"Reports directory: {REPORTS_DIR.absolute()}\n")
 
     # Run pipeline
-    all_results = run_pipeline(countries)
+    all_results = run_pipeline(countries, year)
 
     if not all_results:
         console.print("\n[red]No reports were processed. "
@@ -191,26 +202,26 @@ def main():
         console.print(f"\nExpected structure:")
         for country in countries:
             for bank in BANKS.get(country, []):
-                console.print(f"  {REPORTS_DIR}/{country}/{bank['filename']}")
+                console.print(f"  {pdf_path_for(country, bank, year)}")
         return
 
     # Print summary
-    print_summary_table(all_results)
+    print_summary_table(all_results, year)
 
     # Build DataFrame
     df = build_summary_dataframe(all_results)
-    save_excel_output(df)
+    save_excel_output(df, year)
 
     # Generate charts
     if not args.no_charts and len(all_results) >= 2:
         console.print("\n[bold]Generating charts...[/bold]")
-        save_all_charts(df, str(OUTPUT_DIR / "charts"))
+        save_all_charts(df, str(OUTPUT_DIR / "charts" / str(year)), year)
     elif len(all_results) < 2:
         console.print("\n[yellow]Need at least 2 banks to generate comparative charts.[/yellow]")
 
     console.print(f"\n[bold green]✓ Pipeline complete.[/bold green]")
-    console.print(f"  Results: {OUTPUT_DIR / 'scores' / 'greenwashing_results.xlsx'}")
-    console.print(f"  Charts:  {OUTPUT_DIR / 'charts'}/\n")
+    console.print(f"  Results: {OUTPUT_DIR / 'scores' / f'greenwashing_results_{year}.xlsx'}")
+    console.print(f"  Charts:  {OUTPUT_DIR / 'charts' / str(year)}/\n")
 
 
 if __name__ == "__main__":

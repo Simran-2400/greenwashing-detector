@@ -61,25 +61,26 @@ cd greenwashing-detector
 pip install -r requirements.txt
 ```
 
-Place the bank PDFs in `data/reports/<country>/` using the filenames listed in [`src/config.py`](src/config.py), then run:
+Place the bank PDFs in `data/reports/<country>_<year>/`, named `<file>_<year>.pdf` with the `file` names listed in [`src/config.py`](src/config.py). For example `data/reports/italy_2025/bper_2025.pdf`. Then run:
 
 ```bash
-python main.py --country italy            # all banks for one country
-python analyze_single.py report.pdf --bank "Banco BPM" --country italy   # one report
-python -m pytest tests/ -v                # run the test suite
+python main.py --country italy                # FY2025 (default year)
+python main.py --country italy --year 2024    # FY2024 robustness check
+python analyze_single.py report.pdf --bank "Banco BPM" --country italy --year 2025   # one report
+python -m pytest tests/ -v                    # run the test suite
 ```
 
-Results are written to `data/output/scores/greenwashing_results.xlsx` and charts to `data/output/charts/`.
+Results are written to `data/output/scores/greenwashing_results_<year>.xlsx` and charts to `data/output/charts/<year>/`.
 
 ### Annual reports with an embedded statement
 
-Most banks publish the sustainability statement as a chapter of a 1,000-page annual report. Analysing the whole PDF would bury the signal under financial statements, so each bank in `config.py` can carry a page range:
+Most banks publish the sustainability statement as a chapter of a 1,000-page annual report. Analysing the whole PDF would bury the signal under financial statements, so each bank in `config.py` can carry a page range for each year:
 
 ```python
-{"name": "BPER Banca", "filename": "bper_2025.pdf", "pages": (94, 229)}
+{"name": "BPER Banca", "file": "bper", "pages": {2024: None, 2025: (94, 229)}}
 ```
 
-`pages: None` analyses the whole file, which is correct when the bank publishes a standalone statement.
+`None` analyses the whole file, which is correct when the bank publishes a standalone statement. `find_pages.py` suggests a range for each PDF.
 
 ## Project structure
 

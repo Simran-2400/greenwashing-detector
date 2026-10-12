@@ -23,9 +23,10 @@ from src.config import (
 )
 
 
-def score_all_signals(full_text: str, word_count: int, sentences: list) -> dict:
+def score_all_signals(full_text: str, word_count: int, sentences: list, year: int) -> dict:
     """
     Run all 6 greenwashing signal scorers on the report text.
+    year = the fiscal year the report covers (e.g. 2025 for FY2025).
     Returns a dict with each signal's score and evidence.
     """
     text = full_text.lower()
@@ -36,7 +37,7 @@ def score_all_signals(full_text: str, word_count: int, sentences: list) -> dict:
     results["financed_emissions"]    = score_financed_emissions(text, words_1000)
     results["fossil_fuel"]           = score_fossil_fuel(text)
     results["target_quantification"] = score_target_quantification(text, sentences)
-    results["forward_backward"]      = score_forward_backward(text, sentences)
+    results["forward_backward"]      = score_forward_backward(text, year)
     results["taxonomy_disclosure"]   = score_taxonomy_disclosure(text, words_1000)
 
     return results
@@ -280,7 +281,7 @@ def score_target_quantification(text: str, sentences: list) -> dict:
 # =============================================================================
 # SIGNAL 5: FORWARD-LOOKING vs BACKWARD-LOOKING RATIO
 # =============================================================================
-def score_forward_backward(text: str, sentences: list) -> dict:
+def score_forward_backward(text: str, year: int) -> dict:
     """
     Measures how much of the report is future promises vs. past results.
 
@@ -293,7 +294,9 @@ def score_forward_backward(text: str, sentences: list) -> dict:
     - With little evidence of what was actually achieved.
     """
     forward_count = match_terms(text, FORWARD_LOOKING_KEYWORDS).total_asserted
-    backward_count = match_terms(text, BACKWARD_LOOKING_KEYWORDS).total_asserted
+    # "in 2025", "during 2024"... for the report year and the year before it
+    year_phrases = [f"{w} {y}" for y in (year, year - 1) for w in ("in", "during", "as of")]
+    backward_count = match_terms(text, BACKWARD_LOOKING_KEYWORDS + year_phrases).total_asserted
 
     total = forward_count + backward_count
     forward_ratio = (forward_count / total) if total > 0 else 0.5

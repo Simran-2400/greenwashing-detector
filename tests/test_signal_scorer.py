@@ -7,7 +7,7 @@
 # Run with:  python -m pytest tests/test_signal_scorer.py -v
 # =============================================================================
 
-from src.signal_scorer import score_target_quantification
+from src.signal_scorer import score_target_quantification, score_forward_backward
 
 
 def test_plain_description_is_not_counted_as_vague():
@@ -34,3 +34,13 @@ def test_only_plain_descriptions_give_neutral_score():
                  "the carbon committee met four times in the year."]
     res = score_target_quantification("", sentences)
     assert res["score"] == 5.0
+
+
+# ---------------------------------------------------------------------------
+# Signal 5: year phrases follow the report year (no hardcoded 2024)
+# ---------------------------------------------------------------------------
+def test_backward_years_follow_the_report_year():
+    text = "emissions fell in 2025. the portfolio was rebalanced during 2024."
+    assert score_forward_backward(text, 2025)["backward_count"] == 2
+    # For an FY2024 report, "in 2025" is not a past result and is not counted
+    assert score_forward_backward(text, 2024)["backward_count"] == 1

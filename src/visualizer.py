@@ -35,7 +35,7 @@ VERDICT_COLORS = {
 OUTPUT_DIR = Path("data/output/charts")
 
 
-def save_all_charts(df: pd.DataFrame, output_dir: str = None):
+def save_all_charts(df: pd.DataFrame, output_dir: str, year: int):
     """Run all 5 charts and save to output directory."""
     if output_dir:
         global OUTPUT_DIR
@@ -43,7 +43,7 @@ def save_all_charts(df: pd.DataFrame, output_dir: str = None):
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     paths = []
-    paths.append(chart1_greenwashing_ranking(df))
+    paths.append(chart1_greenwashing_ranking(df, year))
     paths.append(chart2_narrative_vs_performance(df))
     paths.append(chart3_country_heatmap(df))
     paths.append(chart4_signal_breakdown(df))
@@ -53,7 +53,7 @@ def save_all_charts(df: pd.DataFrame, output_dir: str = None):
     return paths
 
 
-def chart1_greenwashing_ranking(df: pd.DataFrame) -> str:
+def chart1_greenwashing_ranking(df: pd.DataFrame, year: int) -> str:
     """
     Horizontal bar chart: all banks ranked by Greenwashing Index.
     Color = verdict. This is your headline chart.
@@ -72,7 +72,7 @@ def chart1_greenwashing_ranking(df: pd.DataFrame) -> str:
 
     ax.set_xlim(0, 11)
     ax.set_xlabel("Greenwashing Index (0 = no risk, 10 = critical)", fontsize=10)
-    ax.set_title("Bank Greenwashing Index — FY2024 Sustainability Reports", fontsize=12, pad=12)
+    ax.set_title(f"Bank Greenwashing Index — FY{year} Sustainability Reports", fontsize=12, pad=12)
     ax.axvline(x=3, color="#27500A", linestyle="--", linewidth=0.8, alpha=0.5)
     ax.axvline(x=5.5, color="#BA7517", linestyle="--", linewidth=0.8, alpha=0.5)
     ax.axvline(x=7.5, color="#E24B4A", linestyle="--", linewidth=0.8, alpha=0.5)

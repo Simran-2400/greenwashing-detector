@@ -168,8 +168,6 @@ BACKWARD_LOOKING_KEYWORDS = [
     "achieved", "delivered", "completed", "accomplished",
     "reduced", "decreased", "lowered",
     "reported", "measured", "disclosed", "published",
-    "in 2024", "during 2024", "as of 2024",
-    "in 2023", "during 2023", "as of 2023",
     "last year",
     "we reduced", "we achieved",
     "year on year", "compared to previous",
@@ -275,29 +273,31 @@ SECTION_HEADER_PATTERNS = [
 # BANK METADATA (unchanged in v2)
 # -----------------------------------------------------------------------------
 BANKS = {
-    # "pages": (start, end) of the Consolidated Sustainability Statement inside
-    # the annual report (1-indexed, from the PDF's table of contents).
-    # None = analyze the whole PDF. Fill these from data/reports/italy/SOURCES.txt.
+    # PDFs live in data/reports/<country>_<year>/<file>_<year>.pdf,
+    # e.g. data/reports/italy_2025/bper_2025.pdf
+    # "pages": {year: (start, end)} of the Consolidated Sustainability Statement
+    # inside the annual report (1-indexed). None = analyze the whole PDF.
+    # Use find_pages.py to suggest the ranges, then check them in the PDF.
     "italy": [
-        {"name": "Intesa Sanpaolo",    "ticker": "ISP",  "filename": "intesa_sanpaolo_2024.pdf", "pages": None},
-        {"name": "UniCredit",          "ticker": "UCG",  "filename": "unicredit_2024.pdf",       "pages": None},
-        {"name": "Banco BPM",          "ticker": "BAMI", "filename": "banco_bpm_2024.pdf",       "pages": None},
-        {"name": "BPER Banca",         "ticker": "BPE",  "filename": "bper_2024.pdf",            "pages": None},
-        {"name": "Monte dei Paschi",   "ticker": "BMPS", "filename": "mps_2024.pdf",             "pages": None},
+        {"name": "Intesa Sanpaolo",    "ticker": "ISP",  "file": "intesa_sanpaolo", "pages": {2024: None, 2025: None}},
+        {"name": "UniCredit",          "ticker": "UCG",  "file": "unicredit",       "pages": {2024: None, 2025: None}},
+        {"name": "Banco BPM",          "ticker": "BAMI", "file": "banco_bpm",       "pages": {2024: None, 2025: None}},
+        {"name": "BPER Banca",         "ticker": "BPE",  "file": "bper",            "pages": {2024: None, 2025: None}},
+        {"name": "Monte dei Paschi",   "ticker": "BMPS", "file": "mps",             "pages": {2024: None, 2025: None}},
     ],
     "germany": [
-        {"name": "Deutsche Bank",      "ticker": "DBK",  "filename": "deutsche_bank_2024.pdf"},
-        {"name": "Commerzbank",        "ticker": "CBK",  "filename": "commerzbank_2024.pdf"},
-        {"name": "LBBW",               "ticker": "LBBW", "filename": "lbbw_2024.pdf"},
-        {"name": "Aareal Bank",        "ticker": "ARL",  "filename": "aareal_2024.pdf"},
-        {"name": "Helaba",             "ticker": "HLB",  "filename": "helaba_2024.pdf"},
+        {"name": "Deutsche Bank",      "ticker": "DBK",  "file": "deutsche_bank"},
+        {"name": "Commerzbank",        "ticker": "CBK",  "file": "commerzbank"},
+        {"name": "LBBW",               "ticker": "LBBW", "file": "lbbw"},
+        {"name": "Aareal Bank",        "ticker": "ARL",  "file": "aareal"},
+        {"name": "Helaba",             "ticker": "HLB",  "file": "helaba"},
     ],
     "france": [
-        {"name": "BNP Paribas",        "ticker": "BNP",  "filename": "bnp_paribas_2024.pdf"},
-        {"name": "Societe Generale",   "ticker": "GLE",  "filename": "societe_generale_2024.pdf"},
-        {"name": "Credit Agricole",    "ticker": "ACA",  "filename": "credit_agricole_2024.pdf"},
-        {"name": "Natixis / BPCE",     "ticker": "BPCE", "filename": "bpce_2024.pdf"},
-        {"name": "Credit Mutuel",      "ticker": "CMA",  "filename": "credit_mutuel_2024.pdf"},
+        {"name": "BNP Paribas",        "ticker": "BNP",  "file": "bnp_paribas"},
+        {"name": "Societe Generale",   "ticker": "GLE",  "file": "societe_generale"},
+        {"name": "Credit Agricole",    "ticker": "ACA",  "file": "credit_agricole"},
+        {"name": "Natixis / BPCE",     "ticker": "BPCE", "file": "bpce"},
+        {"name": "Credit Mutuel",      "ticker": "CMA",  "file": "credit_mutuel"},
     ]
 }
 
