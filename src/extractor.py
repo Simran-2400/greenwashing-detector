@@ -129,9 +129,10 @@ def extract_sentences(full_text: str) -> list:
     Used by signal_scorer.py to classify each sentence as
     forward-looking or backward-looking.
     """
-    # Simple sentence splitter — handles most ESG report patterns
-    # Split on period + space + capital letter, or newline
-    sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z])', full_text)
+    # The text is already lowercased, so we cannot look for a capital letter.
+    # Split on . ! ? followed by whitespace. Decimals like "1.5" have no space,
+    # so they stay intact; "e.g." and "i.e." are protected explicitly.
+    sentences = re.split(r'(?<!\be\.g\.)(?<!\bi\.e\.)(?<=[.!?])\s+', full_text)
     # Filter out very short fragments (likely headers or noise)
     sentences = [s.strip() for s in sentences if len(s.split()) >= 5]
     return sentences
