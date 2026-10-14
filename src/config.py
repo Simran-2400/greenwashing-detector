@@ -279,11 +279,11 @@ BANKS = {
     # inside the annual report (1-indexed). None = analyze the whole PDF.
     # Use find_pages.py to suggest the ranges, then check them in the PDF.
     "italy": [
-        {"name": "Intesa Sanpaolo",    "ticker": "ISP",  "file": "intesa_sanpaolo", "pages": {2024: None, 2025: None}},
-        {"name": "UniCredit",          "ticker": "UCG",  "file": "unicredit",       "pages": {2024: None, 2025: None}},
-        {"name": "Banco BPM",          "ticker": "BAMI", "file": "banco_bpm",       "pages": {2024: None, 2025: None}},
-        {"name": "BPER Banca",         "ticker": "BPE",  "file": "bper",            "pages": {2024: None, 2025: None}},
-        {"name": "Monte dei Paschi",   "ticker": "BMPS", "file": "mps",             "pages": {2024: None, 2025: None}},
+        {"name": "Intesa Sanpaolo",    "ticker": "ISP",  "file": "intesa_sanpaolo", "pages": {2024: None, 2025: (147, 348)}},
+        {"name": "UniCredit",          "ticker": "UCG",  "file": "unicredit",       "pages": {2024: None, 2025: (121, 324)}},
+        {"name": "Banco BPM",          "ticker": "BAMI", "file": "banco_bpm",       "pages": {2024: None, 2025: (2, 171)}},
+        {"name": "BPER Banca",         "ticker": "BPE",  "file": "bper",            "pages": {2024: None, 2025: (94, 261)}},
+        {"name": "Monte dei Paschi",   "ticker": "BMPS", "file": "mps",             "pages": {2024: None, 2025: (143, 333)}},
     ],
     "germany": [
         {"name": "Deutsche Bank",      "ticker": "DBK",  "file": "deutsche_bank"},
