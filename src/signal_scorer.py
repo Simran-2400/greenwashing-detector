@@ -51,10 +51,8 @@ def score_netzero_density(text: str, words_1000: float) -> dict:
     Counts how often net-zero / Paris-alignment language appears.
     High density without supporting performance data = greenwashing signal.
 
-    Scoring logic:
-    - Density < 1 per 1000 words → score 2 (low ambition claims)
-    - Density 1-3 per 1000 words → score 5 (typical)
-    - Density > 3 per 1000 words → score 8 (very high claim density)
+    Scoring: score = 1 + 2.5 x density (claims per 1,000 words), capped at 10.
+    E.g. density 0 → 1, density 1 → 3.5, density 3 → 8.5.
     Note: this signal is NARRATIVE, so high score = high ambition (not bad alone).
     It becomes greenwashing when combined with low performance scores.
     """
@@ -65,17 +63,16 @@ def score_netzero_density(text: str, words_1000: float) -> dict:
     density = total_count / words_1000
 
     if density == 0:
-        score = 1.0
         finding = "Bank makes almost no net-zero or Paris-alignment claims."
     elif density < 1:
-        score = 3.0
         finding = f"Moderate climate ambition language ({total_count} occurrences)."
     elif density < 3:
-        score = 6.0
         finding = f"High net-zero claim density ({total_count} occurrences, {density:.1f} per 1000 words)."
     else:
-        score = 8.5
         finding = f"Very high net-zero claim density ({total_count} occurrences, {density:.1f} per 1000 words). Cross-check against performance data."
+
+    # Continuous score: 1 at zero density, +2.5 per claim per 1,000 words, max 10
+    score = min(10.0, 1.0 + 2.5 * density)
 
     return {
         "score": round(score, 2),
@@ -156,11 +153,9 @@ def score_fossil_fuel(text: str) -> dict:
     Exit language (good): "no new financing", "coal exclusion", "phase-out"
     Continuation language (bad): "transition finance", "bridge fuel", "case by case"
 
-    Scoring:
-    - Exit >> Continuation → score 2 (credible commitment)
-    - Balanced → score 5
-    - Continuation >> Exit → score 8 (greenwashing via loophole language)
-    - No fossil fuel mention at all → score 7 (avoidance is also a signal)
+    Scoring: score = 10 x share of continuation language among all
+    fossil-fuel language (0 = only exit language, 10 = only loophole language).
+    No fossil fuel mention at all → 6.5 (avoidance is also a signal).
     """
     exit_hits = dict(match_terms(text, FOSSIL_EXIT_KEYWORDS).asserted)
     continuation_hits = dict(match_terms(text, FOSSIL_CONTINUATION_KEYWORDS).asserted)
@@ -172,14 +167,15 @@ def score_fossil_fuel(text: str) -> dict:
         score = 6.5
         finding = "No fossil fuel language detected. The bank avoids discussing its fossil fuel exposure entirely."
     elif total_continuation > total_exit * 2:
-        score = 8.0
         finding = f"Continuation language ({total_continuation} hits) dominates exit language ({total_exit} hits). 'Transition finance' framing enables continued fossil fuel support."
     elif total_exit > total_continuation * 2:
-        score = 2.0
         finding = f"Exit language ({total_exit} hits) strongly dominates. Policy commitments appear credible."
     else:
-        score = 5.0
         finding = f"Mixed fossil fuel language: {total_exit} exit signals vs {total_continuation} continuation signals."
+
+    # Continuous score: 10 x share of continuation (loophole) language
+    if total_exit + total_continuation > 0:
+        score = 10.0 * total_continuation / (total_exit + total_continuation)
 
     return {
         "score": round(score, 2),
@@ -205,6 +201,8 @@ def score_target_quantification(text: str, sentences: list) -> dict:
 
     "We will reduce financed emissions by 43% by 2030 from a 2019 baseline" → specific ✓
     "We are committed to reducing our climate impact" → vague ✗
+
+    Scoring: score = 10 x share of vague claims among specific + vague claims.
     """
     # Find sentences that contain climate claims
     climate_trigger_words = [
@@ -256,14 +254,15 @@ def score_target_quantification(text: str, sentences: list) -> dict:
         score = 5.0
         finding = "No clearly specific or clearly vague climate claims found."
     elif specificity_ratio > 0.6:
-        score = 2.0
         finding = f"Strong target quantification: {specific_count}/{total} climate claims include specific numbers, years, or metrics."
     elif specificity_ratio > 0.35:
-        score = 5.0
         finding = f"Moderate quantification: {specific_count}/{total} climate claims are specific. Many remain vague."
     else:
-        score = 8.0
         finding = f"Weak quantification: only {specific_count}/{total} climate claims include hard numbers. Most targets are vague."
+
+    # Continuous score: 10 x share of vague claims (neutral 5 if none found)
+    if total > 0:
+        score = 10.0 * (1 - specificity_ratio)
 
     return {
         "score": round(score, 2),
@@ -289,6 +288,8 @@ def score_forward_backward(text: str, year: int) -> dict:
     - "We reduced financed emissions by 12% in 2024" (backward = accountability)
     - "We target 43% reduction by 2030" (forward = ambition)
 
+    Scoring: score = 10 x share of forward-looking language.
+
     A greenwashing report is future-heavy:
     - "We will commit to... we aim to... by 2030 we plan..."
     - With little evidence of what was actually achieved.
@@ -302,17 +303,16 @@ def score_forward_backward(text: str, year: int) -> dict:
     forward_ratio = (forward_count / total) if total > 0 else 0.5
 
     if forward_ratio > 0.70:
-        score = 8.0
         finding = f"Report is heavily future-oriented ({forward_ratio:.0%} forward-looking). Few past achievements documented."
     elif forward_ratio > 0.55:
-        score = 5.5
         finding = f"Moderately future-heavy ({forward_ratio:.0%} forward-looking). Balance between promises and results could improve."
     elif forward_ratio > 0.40:
-        score = 3.0
         finding = f"Good balance between forward targets ({forward_ratio:.0%}) and past results. Accountability is evident."
     else:
-        score = 1.5
         finding = f"Report is primarily backward-looking ({1-forward_ratio:.0%} past results). Strong accountability posture."
+
+    # Continuous score: 10 x share of forward-looking (promise) language
+    score = 10.0 * forward_ratio
 
     return {
         "score": round(score, 2),
