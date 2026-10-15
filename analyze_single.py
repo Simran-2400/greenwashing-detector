@@ -2,7 +2,12 @@
 # analyze_single.py — Analyze One Bank PDF
 # =============================================================================
 # USAGE:
-#   python analyze_single.py path/to/bank_report.pdf --bank "BNP Paribas" --country france
+#   python analyze_single.py data/reports/italy_2025/bper_2025.pdf --bank "BPER Banca" --country italy
+#   python analyze_single.py other_report.pdf --bank "Other Bank" --pages 94 261
+#
+# The page range of the sustainability statement is taken from config.py when
+# the bank is listed there; --pages overrides it. Without either, the whole
+# PDF is analysed.
 #
 # This is the script you demo in the presentation.
 # Upload any bank PDF → get full in-depth scored analysis printed to terminal.
@@ -20,6 +25,7 @@ import json
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
+from src.config import BANKS
 from src.extractor import extract_text_from_pdf, extract_sentences, get_word_list
 from src.language_audit import run_language_audit
 from src.section_parser import parse_sections, score_section_vagueness
@@ -41,19 +47,33 @@ VERDICT_STYLES = {
 SCORE_STYLE = lambda s: "green" if s <= 3 else "yellow" if s <= 5.5 else "red"
 
 
-def analyze_bank(pdf_path: str, bank_name: str, country: str, year: int) -> dict:
-    """Full pipeline: PDF → scores → report."""
+def pages_from_config(bank_name: str, country: str, year: int):
+    """The statement's page range for this bank and year in config.py, or None."""
+    for bank in BANKS.get(country, []):
+        if bank["name"].lower() == bank_name.lower():
+            return bank.get("pages", {}).get(year)
+    return None
+
+
+def analyze_bank(pdf_path: str, bank_name: str, country: str, year: int, pages=None) -> dict:
+    """Full pipeline: PDF → scores → report. pages = (start, end) of the statement."""
 
     console.print(f"\n[bold]Analyzing:[/bold] {bank_name} ({country.title()})")
     console.print(f"[dim]File: {pdf_path}[/dim]\n")
 
     # ── LAYER 1A: Extract text ────────────────────────────────────────────────
     with console.status("[cyan]Extracting text from PDF..."):
-        extracted = extract_text_from_pdf(pdf_path)
+        extracted = extract_text_from_pdf(pdf_path, pages=pages)
         sentences = extract_sentences(extracted["full_text"])
         word_list = get_word_list(extracted["full_text"])
 
-    console.print(f"  [green]✓[/green] Extracted {extracted['word_count']:,} words from {extracted['page_count']} pages")
+    if pages:
+        where = f"pages {pages[0]}-{pages[1]} of {extracted['page_count']}"
+    else:
+        where = f"all {extracted['page_count']} pages"
+        console.print("  [yellow]No page range given: analysing the whole PDF. "
+                      "Use --pages START END for annual reports.[/yellow]")
+    console.print(f"  [green]✓[/green] Extracted {extracted['word_count']:,} words from {where}")
 
     # ── LAYER 1B: Language audit ──────────────────────────────────────────────
     with console.status("[cyan]Running language audit..."):
@@ -228,6 +248,8 @@ def main():
     parser.add_argument("--bank", default="Unknown Bank", help="Bank name")
     parser.add_argument("--country", default="unknown", help="Country (italy/germany/france)")
     parser.add_argument("--year", type=int, default=2025, help="Fiscal year of the report (default 2025)")
+    parser.add_argument("--pages", type=int, nargs=2, metavar=("START", "END"),
+                        help="Pages of the sustainability statement (default: from config.py)")
     parser.add_argument("--save-json", action="store_true", help="Save results to JSON file")
 
     args = parser.parse_args()
@@ -236,7 +258,8 @@ def main():
         console.print(f"[red]Error: File not found: {args.pdf_path}[/red]")
         sys.exit(1)
 
-    result = analyze_bank(args.pdf_path, args.bank, args.country, args.year)
+    pages = tuple(args.pages) if args.pages else pages_from_config(args.bank, args.country, args.year)
+    result = analyze_bank(args.pdf_path, args.bank, args.country, args.year, pages)
 
     if args.save_json:
         out_path = f"data/output/scores/{args.bank.lower().replace(' ', '_')}_result.json"
