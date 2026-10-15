@@ -154,7 +154,8 @@ def score_fossil_fuel(text: str) -> dict:
     Continuation language (bad): "transition finance", "bridge fuel", "case by case"
 
     Scoring: score = 10 x share of continuation language among all
-    fossil-fuel language (0 = only exit language, 10 = only loophole language).
+    fossil-fuel language, with one phrase added to each side so that very
+    few matches give a cautious score rather than 0 or 10.
     No fossil fuel mention at all → 6.5 (avoidance is also a signal).
     """
     exit_hits = dict(match_terms(text, FOSSIL_EXIT_KEYWORDS).asserted)
@@ -173,9 +174,11 @@ def score_fossil_fuel(text: str) -> dict:
     else:
         finding = f"Mixed fossil fuel language: {total_exit} exit signals vs {total_continuation} continuation signals."
 
-    # Continuous score: 10 x share of continuation (loophole) language
+    # Continuous score: 10 x share of continuation (loophole) language.
+    # One imaginary phrase is added to each side so a handful of matches
+    # cannot give an extreme score (3 continuation, 0 exit -> 8.0, not 10).
     if total_exit + total_continuation > 0:
-        score = 10.0 * total_continuation / (total_exit + total_continuation)
+        score = 10.0 * (total_continuation + 1) / (total_exit + total_continuation + 2)
 
     return {
         "score": round(score, 2),

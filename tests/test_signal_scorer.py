@@ -62,8 +62,20 @@ def test_netzero_density_is_continuous():
 
 def test_fossil_fuel_score_is_share_of_continuation_language():
     text = "phase out. phase out. phase out. transition finance."
-    assert score_fossil_fuel(text)["score"] == 2.5          # 1 of 4 is continuation
+    assert score_fossil_fuel(text)["score"] == 3.33         # (1+1) / (4+2)
     assert score_fossil_fuel("no relevant words")["score"] == 6.5
+
+
+def test_few_fossil_matches_do_not_give_an_extreme_score():
+    # Banco BPM FY2025: 3 continuation phrases, 0 exit phrases.
+    # A plain share gives 10/10 from just 3 words; smoothing gives 8.0.
+    text = "supporting the transition. supporting the transition. supporting the transition."
+    assert score_fossil_fuel(text)["score"] == 8.0
+
+
+def test_many_fossil_matches_stay_close_to_the_plain_share():
+    text = "phase out. " * 30 + "transition finance. " * 10    # plain share 2.5
+    assert score_fossil_fuel(text)["score"] == 2.62
 
 
 def test_forward_score_is_share_of_forward_language():
