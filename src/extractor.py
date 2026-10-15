@@ -42,7 +42,7 @@ def extract_text_from_pdf(pdf_path: str, pages: tuple = None) -> dict:
             page_num = i + 1
             if not _in_range(page_num, pages):
                 continue
-            raw_text = page.extract_text()
+            raw_text = _page_text(page)
             if not raw_text:
                 continue  # skip empty pages (images, charts)
 
@@ -67,6 +67,35 @@ def extract_text_from_pdf(pdf_path: str, pages: tuple = None) -> dict:
         "pages_analyzed": pages or (1, total_pages),
         "source_path": str(pdf_path)
     }
+
+
+def _page_text(page) -> str:
+    """
+    Extract a page's text, reading sideways (landscape) tables correctly.
+
+    Banks often print EU Taxonomy and emissions tables rotated by 90 degrees.
+    With default settings pdfplumber reads that text backwards ("gar" comes
+    out as "rag"). For a mostly sideways page we read the words in the right
+    direction, then rebuild each row: on a rotated page one row of text is a
+    column of words sharing the same horizontal position.
+    """
+    sideways = [c for c in page.chars if not c.get("upright", True)]
+    if len(sideways) <= len(page.chars) / 2:
+        return page.extract_text()
+
+    upward = sum(c["matrix"][1] > 0 for c in sideways) >= len(sideways) / 2
+    words = page.extract_words(line_dir_rotated="ltr" if upward else "rtl",
+                               char_dir_rotated="btt" if upward else "ttb")
+
+    rows = []
+    for w in sorted(words, key=lambda w: w["x0"], reverse=not upward):
+        if rows and abs(w["x0"] - rows[-1][0]["x0"]) <= 3:
+            rows[-1].append(w)
+        else:
+            rows.append([w])
+    # upward text reads from bottom to top, downward text from top to bottom
+    return "\n".join(" ".join(w["text"] for w in sorted(r, key=lambda w: w["top"], reverse=upward))
+                     for r in rows)
 
 
 def _in_range(page_num: int, pages: tuple) -> bool:

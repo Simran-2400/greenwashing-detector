@@ -8,7 +8,8 @@
 # =============================================================================
 
 from src.signal_scorer import (score_target_quantification, score_forward_backward,
-                                score_netzero_density, score_fossil_fuel)
+                                score_netzero_density, score_fossil_fuel,
+                                score_taxonomy_disclosure)
 
 
 def test_plain_description_is_not_counted_as_vague():
@@ -75,3 +76,19 @@ def test_vague_share_drives_target_score():
                  "we aim to significantly reduce our carbon footprint over time.",
                  "we strive to cut carbon where possible."]
     assert score_target_quantification("", sentences)["score"] == 6.67   # 2 of 3 vague
+
+
+# ---------------------------------------------------------------------------
+# Signal 6: the GAR in the standard EU table has "%" in the column header,
+# not next to the numbers, and must still count as a disclosed percentage
+# ---------------------------------------------------------------------------
+def test_gar_in_eu_template_row_counts_as_percentage():
+    text = "main kpi green asset ratio (gar) stock 3,872.4 4,443.0 9.2 10.5 22.6"
+    res = score_taxonomy_disclosure(text, 1)
+    assert res["has_percentage"] is True
+    assert res["score"] == 1.5
+
+
+def test_gar_mention_without_figures_is_not_a_percentage():
+    res = score_taxonomy_disclosure("the green asset ratio (gar) is disclosed in the annex.", 1)
+    assert res["has_percentage"] is False

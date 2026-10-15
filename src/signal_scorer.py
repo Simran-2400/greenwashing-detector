@@ -328,6 +328,13 @@ def score_forward_backward(text: str, year: int) -> dict:
 # =============================================================================
 # SIGNAL 6: TAXONOMY ALIGNMENT DISCLOSURE
 # =============================================================================
+# The mandatory EU template for banks (Annex VI, Template 0) has a row
+# "Green asset ratio (GAR) stock" followed by the amounts and the KPI values.
+# The "%" sign is in the column header, not next to the numbers, so a plain
+# "number%" search misses it. This pattern matches the row with its numbers.
+GAR_TEMPLATE_ROW = r'green asset ratio\s*\(gar\)\s*stock\s+[\d.,]+\s+[\d.,]+\s+\d+(\.\d+)?'
+
+
 def score_taxonomy_disclosure(text: str, words_1000: float) -> dict:
     """
     Checks whether the bank reports its EU Taxonomy alignment.
@@ -348,7 +355,7 @@ def score_taxonomy_disclosure(text: str, words_1000: float) -> dict:
     has_percentage = bool(re.search(
         r'taxonomy[- ]aligned.*?\d+\.?\d*\s*%|\d+\.?\d*\s*%.*?taxonomy[- ]aligned',
         text
-    ))
+    ) or re.search(GAR_TEMPLATE_ROW, text))
 
     if unique_terms == 0:
         score = 9.0

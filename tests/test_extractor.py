@@ -7,7 +7,12 @@
 # Run with:  python -m pytest tests/test_extractor.py -v
 # =============================================================================
 
-from src.extractor import extract_sentences
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import pdfplumber
+
+from src.extractor import extract_sentences, _page_text
 
 
 def test_lowercase_text_is_split_into_sentences():
@@ -33,3 +38,21 @@ def test_line_breaks_inside_a_sentence_are_kept_together():
     sentences = extract_sentences(text)
     assert len(sentences) == 2
     assert "carbon intensity of\nour power portfolio" in sentences[0]
+
+
+# ---------------------------------------------------------------------------
+# Sideways (landscape) pages: banks print EU Taxonomy tables rotated by 90
+# degrees, and pdfplumber's default reads that text backwards ("gar" -> "rag")
+# ---------------------------------------------------------------------------
+def test_sideways_table_row_is_read_forwards(tmp_path):
+    pdf_path = tmp_path / "rotated.pdf"
+    fig = plt.figure(figsize=(4, 6))
+    fig.text(0.5, 0.1, "Green asset ratio (GAR) stock 3,872.4 4,443.0 9.2 10.5",
+             rotation=90, fontsize=9)
+    fig.savefig(pdf_path)
+    plt.close(fig)
+
+    with pdfplumber.open(pdf_path) as pdf:
+        page = pdf.pages[0]
+        assert ")RAG(" in page.extract_text()          # the bug: read backwards
+        assert _page_text(page) == "Green asset ratio (GAR) stock 3,872.4 4,443.0 9.2 10.5"
