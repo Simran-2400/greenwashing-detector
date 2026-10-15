@@ -1,66 +1,76 @@
 """
 find_pages.py — Locate the Sustainability Statement inside a bank annual report.
 
-Big annual reports bury the CSRD Sustainability Statement in the middle. This
-scans each PDF, scores every page for ESRS/sustainability vocabulary, and
-reports the longest dense run of such pages: the likely statement.
+Big annual reports bury the CSRD Sustainability Statement in the middle. Its
+pages carry a running header such as "Consolidated Sustainability Statement",
+so we mark every page that names the statement, plus the sideways (landscape)
+table pages, whose rotated header is hard to read. The longest block of marked
+pages is the statement.
 
-The output is a SUGGESTION. Always eyeball the reported start/end pages in the
-PDF before writing them into config.py.
+Small gaps are allowed (blank pages, reports that print the header on odd
+pages only). The auditor's assurance report is left out: it names the
+statement but is not the bank's own text.
 
-    python3 find_pages.py                      # all PDFs in a folder
+Checked on the FY2025 reports of Intesa Sanpaolo, UniCredit, Banco BPM, BPER
+and MPS: all five ranges match the ones verified by hand.
+
+The output is a SUGGESTION. Always check the start and end pages in the PDF
+before writing them into config.py.
+
     python3 find_pages.py data/reports/italy_2025
 """
 
+import re
 import sys
 from pathlib import Path
+
 import pdfplumber
 
-# Vocabulary that appears densely inside a sustainability statement and
-# almost nowhere else in an annual report.
-MARKERS = [
-    "esrs", "sustainability statement", "double materiality", "csrd",
-    "scope 1", "scope 2", "scope 3", "ghg emissions", "financed emissions",
-    "taxonomy", "green asset ratio", "climate change mitigation",
-    "value chain", "own workforce", "ipcc", "net zero", "decarbonisation",
-]
+from src.extractor import _page_text   # also reads sideways table pages
 
-MIN_HITS = 3        # a page needs this many marker hits to count as "in-scope"
-MAX_GAP = 10        # pages of quiet allowed inside one run before it breaks
+HEADER = re.compile(r"sustainability (statement|reporting)", re.I)
+AUDITOR = re.compile(r"independent auditor|auditor['’]s responsibilit|assurance engagement|certification of", re.I)
+MAX_GAP = 3   # unmarked pages allowed inside one block
 
 
-def page_score(text: str) -> int:
-    t = (text or "").lower()
-    return sum(t.count(m) for m in MARKERS)
+def is_statement_page(text: str, sideways: bool) -> bool:
+    """True if the page names the statement (or is a sideways table) and is not the auditor's report."""
+    text = " ".join(text.split())
+    return (bool(HEADER.search(text)) or sideways) and not AUDITOR.search(text)
 
 
-def find_run(scores: list) -> tuple:
-    """Longest run of in-scope pages, tolerating small gaps. Returns (start, end)."""
-    best = current = None
-    gap = 0
-    for i, s in enumerate(scores, start=1):
-        if s >= MIN_HITS:
-            current = current or [i, i]
-            current[1], gap = i, 0
-        elif current:
-            gap += 1
-            if gap > MAX_GAP:
-                best = max(best or current, current, key=lambda r: r[1] - r[0])
-                current = None
-    best = max(best or current, current or best, key=lambda r: r[1] - r[0])
-    return tuple(best)
+def find_block(marked: list) -> tuple:
+    """Longest block of marked pages (1-indexed), allowing gaps of MAX_GAP pages."""
+    best = None
+    start = last = None
+    for page, ok in enumerate(marked, start=1):
+        if not ok:
+            continue
+        if last is not None and page - last <= MAX_GAP + 1:
+            last = page
+        else:
+            start = last = page
+        if best is None or last - start > best[1] - best[0]:
+            best = (start, last)
+    return best
 
 
 def scan(pdf_path: Path) -> None:
+    marked = []
     with pdfplumber.open(pdf_path) as pdf:
-        scores = [page_score(p.extract_text()) for p in pdf.pages]
-    start, end = find_run(scores)
-    dense = sum(1 for s in scores if s >= MIN_HITS)
-    print(f"\n{pdf_path.name}")
-    print(f"  total pages     : {len(scores)}")
-    print(f"  sustainability  : pages {start}–{end}  ({end - start + 1} pages)")
-    print(f"  in-scope pages  : {dense}")
-    print(f"  config entry    : \"pages\": ({start}, {end})")
+        for page in pdf.pages:
+            chars = page.chars
+            sideways = bool(chars) and sum(not c["upright"] for c in chars) > len(chars) / 2
+            marked.append(is_statement_page(_page_text(page) or "", sideways))
+            page.close()   # free memory: annual reports run to 1,000+ pages
+    block = find_block(marked)
+    print(f"\n{pdf_path.name}  ({len(marked)} pages)")
+    if block is None:
+        print("  statement not found: check the table of contents by hand")
+        return
+    start, end = block
+    print(f"  sustainability statement : pages {start}-{end}  ({end - start + 1} pages)")
+    print(f"  config entry             : ({start}, {end})")
 
 
 if __name__ == "__main__":
@@ -68,7 +78,7 @@ if __name__ == "__main__":
     pdfs = sorted(folder.glob("*.pdf"))
     if not pdfs:
         sys.exit(f"No PDFs found in {folder}")
-    print(f"Scanning {len(pdfs)} reports in {folder} — this takes a few minutes.")
+    print(f"Scanning {len(pdfs)} reports in {folder}. This takes a few minutes.")
     for pdf in pdfs:
         scan(pdf)
-    print("\nVerify each range in the PDF, then paste into BANKS in src/config.py")
+    print("\nCheck each range in the PDF, then add it to BANKS in src/config.py")
